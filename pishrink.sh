@@ -88,7 +88,7 @@ function set_autoexpand() {
         info "An existing /etc/rc.local was not found, autoexpand may fail..."
     fi
 
-    if [[ -f "$mountdir/etc/rc.local" ]] && [[ "$(md5sum "$mountdir/etc/rc.local" | cut -d ' ' -f 1)" != "5c286b336c0606ed8e6f87708f7802eb" ]]; then
+    if [[ -f "$mountdir/etc/rc.local" ]] && [[ "$(md5sum "$mountdir/etc/rc.local" | cut -d ' ' -f 1)" != "56a08639ba5736a82b37c2adb48eb076" ]]; then
       echo "Creating new /etc/rc.local"
     if [ -f "$mountdir/etc/rc.local" ]; then
         mv "$mountdir/etc/rc.local" "$mountdir/etc/rc.local.bak"
@@ -98,20 +98,21 @@ function set_autoexpand() {
 cat <<\EOF1 > "$mountdir/etc/rc.local"
 #!/bin/bash
 do_expand_rootfs() {
+  ROOT_BLK=$(mount | sed -n 's|^/dev/\(.*\)p. on / .*|\1|p')
   ROOT_PART=$(mount | sed -n 's|^/dev/\(.*\) on / .*|\1|p')
 
-  PART_NUM=${ROOT_PART#mmcblk0p}
+  PART_NUM=${ROOT_PART#${ROOT_BLK}p}
   if [ "$PART_NUM" = "$ROOT_PART" ]; then
     echo "$ROOT_PART is not an SD card. Don't know how to expand"
     return 0
   fi
 
   # Get the starting offset of the root partition
-  PART_START=$(parted /dev/mmcblk0 -ms unit s p | grep "^${PART_NUM}" | cut -f 2 -d: | sed 's/[^0-9]//g')
+  PART_START=$(parted /dev/${ROOT_BLK} -ms unit s p | grep "^${PART_NUM}" | cut -f 2 -d: | sed 's/[^0-9]//g')
   [ "$PART_START" ] || return 1
   # Return value will likely be error for fdisk as it fails to reload the
   # partition table because the root fs is mounted
-  fdisk /dev/mmcblk0 <<EOF
+  fdisk /dev/${ROOT_BLK} <<EOF
 p
 d
 $PART_NUM
@@ -134,19 +135,19 @@ EOF
 reboot
 exit
 }
-raspi_config_expand() {
-/usr/bin/env raspi-config --expand-rootfs
-if [[ $? != 0 ]]; then
-  return -1
-else
-  rm -f /etc/rc.local; cp -fp /etc/rc.local.bak /etc/rc.local && /etc/rc.local
-  reboot
-  exit
-fi
-}
-raspi_config_expand
-echo "WARNING: Using backup expand..."
-sleep 5
+# raspi_config_expand() {
+# /usr/bin/env raspi-config --expand-rootfs
+# if [[ $? != 0 ]]; then
+#   return -1
+# else
+#   rm -f /etc/rc.local; cp -fp /etc/rc.local.bak /etc/rc.local && /etc/rc.local
+#   reboot
+#   exit
+# fi
+# }
+# raspi_config_expand
+# echo "WARNING: Using backup expand..."
+# sleep 5
 do_expand_rootfs
 echo "ERROR: Expanding failed..."
 sleep 5
