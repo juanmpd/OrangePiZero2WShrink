@@ -106,6 +106,11 @@ do_expand_rootfs() {
   ROOT_PART=$(mount | sed -n 's|^/dev/\(.*\) on / .*|\1|p')
 
   PART_NUM=${ROOT_PART#${ROOT_BLK}p}
+
+  echo "ROOT_BLK = $ROOT_BLK"
+  echo "ROOT_PART = $ROOT_PART"
+  echo "PART_NUM = $PART_NUM"
+
   if [ "$PART_NUM" = "$ROOT_PART" ]; then
     echo "$ROOT_PART is not an SD card. Don't know how to expand"
     return 0
@@ -156,8 +161,9 @@ do_expand_rootfs
 echo "ERROR: Expanding failed..."
 sleep 5
 if [[ -f /etc/rc.local.bak ]]; then
-  cp -fp /etc/rc.local.bak /etc/rc.local
-  /etc/rc.local
+  # cp -fp /etc/rc.local.bak /etc/rc.local
+  # /etc/rc.local
+  /etc/rc.local.bak
 fi
 exit 0
 EOFRC
